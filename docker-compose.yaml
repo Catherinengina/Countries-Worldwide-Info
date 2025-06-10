@@ -1,0 +1,40 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+  webserver:
+    image: apache/airflow:2.10.0
+    depends_on: [mysql]
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: mysql+mysqlconnector://${DB_USER}:${DB_PASS}@mysql:3306/${DB_NAME}
+      AIRFLOW__CORE__LOAD_EXAMPLES: False
+      AIRFLOW__WEBSERVER__SECRET_KEY: 'I0wk6NNbZ9VksBm3poTYZpTTaZm4qQEapb2_PVmVyQM'
+
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./pipeline:/opt/airflow/pipeline
+      - ./.env:/opt/airflow/.env
+    command: webserver
+  scheduler:
+    image: apache/airflow:2.10.0
+    depends_on: [webserver]
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: mysql+mysqlconnector://${DB_USER}:${DB_PASS}@mysql:3306/${DB_NAME}
+      AIRFLOW__CORE__LOAD_EXAMPLES: False
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./pipeline:/opt/airflow/pipeline
+      - ./.env:/opt/airflow/.env
+    command: scheduler
+volumes:
+  mysql_data:
